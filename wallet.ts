@@ -40,7 +40,8 @@ async function New(): Promise<Keypair> {
     await ensureAtLeastOneWalletExists(CONFIGURATION.SOLANA_WALLET, createKeyPair).catch((error: Error) => console.error(error));
 
     let keypair: Keypair = await readKeypairFromfile(CONFIGURATION.SOLANA_WALLET);
-    log("keypair : ", keypair)
+    UserWallet = { keypair: keypair }
+    return keypair
 }
 
 async function transer(otherPublicKey, amount) { }
