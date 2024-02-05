@@ -10,6 +10,18 @@ interface Configuration {
     SOLANA_WALLET: string,
 }
 const CONFIGURATION: Configuration = extractConfigsFromParameters()
+
+function extractConfigsFromParameters(): Configuration {
+    var argv = require('minimist')(process.argv.slice(2));
+    log(argv);
+    const walletFile = argv['wallet_file'] || "wallet.json";
+    const data_dir = argv['data_dir'] || "data";
+    return {
+        DATA_DIR: data_dir,
+        SOLANA_WALLET: path.join(data_dir, walletFile),
+    }
+}
+
 /*
     TODOs: 
         1. Verbosity level for logs
@@ -31,15 +43,7 @@ async function New(): Promise<void> {
     log("keypair : ", keypair)
 }
 
-function extractConfigsFromParameters(): Configuration {
-    var argv = require('minimist')(process.argv.slice(2));
-    log(argv);
-    const walletFile = argv['wallet_file'] || "wallet.json";
-    const data_dir = argv['data_dir'] || "data";
-    return {
-        DATA_DIR: data_dir,
-        SOLANA_WALLET: path.join(data_dir, walletFile),
-    }
-}
+async function transer(otherPublicKey, amount) { }
+
 
 log(CONFIGURATION)
