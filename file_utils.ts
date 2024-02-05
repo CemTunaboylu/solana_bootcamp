@@ -24,9 +24,15 @@ async function ensureAtLeastOneWalletExists(filePath: string, keyCreationFunctio
     } catch (error) { // If the file does not exist, create it with the key pair 
         let keyPair = keyCreationFunction();
         log("Wallet cannot be found, generating...");
-        await fs.writeFile(fullPath, JSON.stringify(Array.from(keyPair.secretKey)));
-        log('Wallet created successfully.');
+        await writeKeyPairToFile(fullPath, keyPair);
+        log('Wallet created and saved successfully.');
     }
+}
+
+export async function writeKeyPairToFile(filePath: string, keyPair: Keypair) {
+    const fullPath = path.resolve(filePath);
+    await fs.writeFile(fullPath, JSON.stringify(Array.from(keyPair.secretKey)));
+    log('Keypair written successfully.');
 }
 
 async function readKeypairFromfile(filePath: string, encoding: string = "utf8"): Promise<Keypair> {
