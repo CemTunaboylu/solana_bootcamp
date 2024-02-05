@@ -6,7 +6,7 @@ import { log } from './logging';
 
 import { Keypair } from "@solana/web3.js";
 
-async function ensureDirExists(dirPath: string): Promise<void> {
+function ensureDirExists(dirPath: string): void {
     if (!existsSync(dirPath)) {
         log(`Directory ${dirPath} does not exist, creating...`);
         mkdirSync(dirPath, { recursive: true });

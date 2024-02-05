@@ -46,7 +46,7 @@ function createKeyPair(): Keypair {
 }
 
 async function New(): Promise<Keypair> {
-    await ensureDirExists(CONFIGURATION.DATA_DIR);
+    ensureDirExists(CONFIGURATION.DATA_DIR);
     await ensureAtLeastOneWalletExists(CONFIGURATION.SOLANA_WALLET, createKeyPair).catch((error: Error) => console.error(error));
 
     let keypair: Keypair = await readKeypairFromfile(CONFIGURATION.SOLANA_WALLET);
