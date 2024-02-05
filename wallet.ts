@@ -18,7 +18,6 @@ interface Wallet {
 let UserWallet: Wallet;
 
 const LOCALHOST = "http://127.0.0.1:8899"
-
 // const connection = new Connection(clusterApiUrl("testnet", false));
 const connection = new Connection(LOCALHOST, "confirmed");
 
@@ -55,12 +54,12 @@ async function New(): Promise<Keypair> {
 }
 
 
-async function Transer(toPublicKey: PublicKey, amount: number) {
+async function Transer(toPublicKey: PublicKey, amountsInLamport: number) {
     const transaction = new Transaction().add(
         SystemProgram.transfer({
             fromPubkey: UserWallet.keypair.publicKey,
             toPubkey: toPublicKey,
-            lamports: amount,
+            lamports: amountsInLamport * LAMPORTS_PER_SOL,
         })
     )
     let signature: TransactionSignature = await sendAndConfirmTransaction(connection, transaction, [UserWallet.keypair]);
