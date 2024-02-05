@@ -44,7 +44,27 @@ async function New(): Promise<Keypair> {
     return keypair
 }
 
-async function transer(otherPublicKey, amount) { }
+
+async function Transer(toPublicKey: PublicKey, amount: number) {
+    const transaction = new Transaction().add(
+        SystemProgram.transfer({
+            fromPubkey: UserWallet.keypair.publicKey,
+            toPubkey: toPublicKey,
+            lamports: amount,
+        })
+    )
+    let signature: TransactionSignature = await sendAndConfirmTransaction(connection, transaction, [UserWallet.keypair]);
+    log(signature)
+}
+
+
+async function airdrop(amount: number) {
+    const airdropSignature = await connection.requestAirdrop(
+        UserWallet.keypair.publicKey,
+        amount
+    );
+    await connection.confirmTransaction(airdropSignature);
+}
 
 
 log(CONFIGURATION)
