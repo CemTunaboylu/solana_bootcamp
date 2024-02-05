@@ -66,5 +66,9 @@ async function airdrop(amount: number) {
     await connection.confirmTransaction(airdropSignature);
 }
 
+async function balance() {
+    let balance: number = await connection.getBalance(UserWallet.keypair.publicKey);
+    log("current balance: ", balance)
+}
 
 log(CONFIGURATION)
