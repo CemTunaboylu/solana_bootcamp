@@ -6,7 +6,7 @@ import { log } from './logging';
 
 import { Keypair } from "@solana/web3.js";
 
-function ensureDirExists(dirPath: string): void {
+export function ensureDirExists(dirPath: string): void {
     if (!existsSync(dirPath)) {
         log(`Directory ${dirPath} does not exist, creating...`);
         mkdirSync(dirPath, { recursive: true });
@@ -16,7 +16,7 @@ function ensureDirExists(dirPath: string): void {
     }
 }
 
-async function ensureAtLeastOneWalletExists(filePath: string, keyCreationFunction: () => Keypair): Promise<void> {
+export async function ensureAtLeastOneWalletExists(filePath: string, keyCreationFunction: () => Keypair): Promise<void> {
     const fullPath = path.resolve(filePath);
     try {
         await fs.access(fullPath); // Check if the file exists
@@ -35,9 +35,7 @@ export async function writeKeyPairToFile(filePath: string, keyPair: Keypair) {
     log('Keypair written successfully.');
 }
 
-async function readKeypairFromfile(filePath: string, encoding: string = "utf8"): Promise<Keypair> {
+export async function readKeypairFromfile(filePath: string, encoding: string = "utf8"): Promise<Keypair> {
     let retrievedKeypair: string = readFileSync(filePath, encoding);
     return Keypair.fromSecretKey(Uint8Array.from(JSON.parse(retrievedKeypair)));
 }
-
-export { ensureDirExists, ensureAtLeastOneWalletExists, readKeypairFromfile };
