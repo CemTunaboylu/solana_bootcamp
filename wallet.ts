@@ -1,6 +1,6 @@
 import path from 'path';
 
-import { Connection, clusterApiUrl, Keypair, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { Connection, LAMPORTS_PER_SOL, SystemProgram, Transaction, Keypair, PublicKey, TransactionSignature, sendAndConfirmTransaction } from "@solana/web3.js";
 
 import { log } from "./logging";
 import { ensureDirExists, ensureAtLeastOneWalletExists, readKeypairFromfile } from "./file_utils";
@@ -11,9 +11,19 @@ interface Configuration {
 }
 const CONFIGURATION: Configuration = extractConfigsFromParameters()
 
+interface Wallet {
+    keypair: Keypair
+}
+
+let UserWallet: Wallet;
+
+const LOCALHOST = "http://127.0.0.1:8899"
+
+// const connection = new Connection(clusterApiUrl("testnet", false));
+const connection = new Connection(LOCALHOST, "confirmed");
+
 function extractConfigsFromParameters(): Configuration {
     var argv = require('minimist')(process.argv.slice(2));
-    log(argv);
     const walletFile = argv['wallet_file'] || "wallet.json";
     const data_dir = argv['data_dir'] || "data";
     return {
@@ -71,4 +81,17 @@ async function balance() {
     log("current balance: ", balance)
 }
 
-log(CONFIGURATION)
+
+async function test() {
+    let dummy: Keypair = createKeyPair()
+    await New();
+    await airdrop(10)
+
+    const airdropSignature = await connection.requestAirdrop(
+        dummy.publicKey,
+        10
+    );
+    await balance()
+    Transer(dummy.publicKey, 2);
+}
+test()
