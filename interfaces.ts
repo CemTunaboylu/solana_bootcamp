@@ -1,13 +1,17 @@
 import { Connection, LAMPORTS_PER_SOL, SystemProgram, Transaction, Keypair, PublicKey, TransactionSignature, sendAndConfirmTransaction } from "@solana/web3.js";
 import * as CryptoJS from 'crypto-js';
+import { mkdirSync } from 'fs';
 
 export type WalletCustomizerFunction = (wallet: Wallet) => void;
 
 export interface Wallet {
-    identifier: string
-    publicKey: PublicKey
-    privateKeyFile: string
-    balance: number
+    getIdentifier(): string
+    getPublicKey(): PublicKey
+    getBalance(): number
+    getPrivateKey(): Uint8Array
+
+    setIdentifier(identifier: string): boolean
+    setPrivateKey(privateKey: Uint8Array): boolean
 
     new(...customValueFuncs: WalletCustomizerFunction[]): Wallet
 }
