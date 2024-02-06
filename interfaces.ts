@@ -8,7 +8,6 @@ export interface Wallet {
     getIdentifier(): string
     getPublicKey(): PublicKey
     getBalance(): number
-    getPrivateKey(): Uint8Array
 
     setIdentifier(identifier: string): boolean
     setPrivateKey(privateKey: Uint8Array): boolean
