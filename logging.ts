@@ -6,4 +6,9 @@ function log(...msg: any[]) {
         console.log(msg)
 }
 
-export { log };
+function logWithTrace(trace: string, ...msg: any[]) {
+    if (VERBOSE)
+        console.log(`[%{trace}]-`, msg)
+}
+
+export { log, logWithTrace };
