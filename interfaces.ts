@@ -1,4 +1,4 @@
-import { Connection, LAMPORTS_PER_SOL, SystemProgram, Transaction, Keypair, PublicKey, TransactionSignature, sendAndConfirmTransaction } from "@solana/web3.js";
+import { Connection, SignatureResult, SystemProgram, Transaction, Keypair, PublicKey, TransactionSignature, sendAndConfirmTransaction } from "@solana/web3.js";
 import * as CryptoJS from 'crypto-js';
 import { mkdirSync } from 'fs';
 
@@ -15,6 +15,10 @@ export interface Wallet {
     sign(tx: Transaction): void
 
     constructor(...customValueFuncs: WalletCustomizerFunction[]): Wallet
+}
+
+export interface TransactionConfirmer {
+    confirm(txSignature: TransactionSignature): Promise<SignatureResult>
 }
 
 interface PasswordProtected {
