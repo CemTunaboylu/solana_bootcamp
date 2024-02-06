@@ -13,7 +13,9 @@ export interface Wallet {
     setIdentifier(identifier: string): boolean
     setPrivateKey(privateKey: Uint8Array): boolean
 
-    new(...customValueFuncs: WalletCustomizerFunction[]): Wallet
+    sign(tx: Transaction): void
+
+    constructor(...customValueFuncs: WalletCustomizerFunction[]): Wallet
 }
 
 interface PasswordProtected {
