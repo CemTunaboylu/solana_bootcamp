@@ -7,14 +7,12 @@ export type WalletCustomizerFunction = (wallet: Wallet) => void;
 export interface Wallet {
     getIdentifier(): string
     getPublicKey(): PublicKey
-    getBalance(): number
+    getBalance(): Promise<number>
 
     setIdentifier(identifier: string): boolean
     setPrivateKey(privateKey: Uint8Array): boolean
 
-    sign(tx: Transaction): void
-
-    constructor(...customValueFuncs: WalletCustomizerFunction[]): Wallet
+    sign(tx: Transaction): Uint8Array
 }
 
 export interface TransactionConfirmer {
