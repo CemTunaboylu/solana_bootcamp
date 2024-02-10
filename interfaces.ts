@@ -27,20 +27,21 @@ interface PasswordProtected {
     approve(password: string): boolean
 }
 
-enum WalletVaultSetResult {
+export enum WalletVaultSetResult {
     Successful = 0,
     InvalidIdentifier,
     WalletWithIdentifierAlreadyExists,
     Failed,
 }
 
-enum WalletVaultDelResult {
+export enum WalletVaultDelResult {
     Successful = 0,
     NoSuchIdentifier,
     Failed,
 }
-interface WalletVault {
-    get(identifier: string): Wallet
+
+export interface WalletVault {
+    get(identifier: string): Wallet | null
     set(identifier: string, wallet: Wallet): WalletVaultSetResult
     del(identifier: string, wallet: Wallet): WalletVaultDelResult
 }
