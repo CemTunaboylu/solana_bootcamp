@@ -7,19 +7,26 @@ async function New(): Promise<Wallet> {
     throw new Error("not implemented");
 }
 
+type TransactionOrError = {
+    tx: Transaction | null,
+    err: Error | null
+}
+
 export async function prepareTransaction(
     fromWallet: Wallet,
     toPublicKey: PublicKey,
     lamports: number,
     recentBlockHash: BlockhashWithExpiryBlockHeight,
     balanceCheck: boolean = false
-): Promise<Transaction> {
+): Promise<TransactionOrError> {
+    let txOrErr: TransactionOrError = { tx: null, err: null }
     if (balanceCheck) {
         let currentBalanceInLamports = await fromWallet.getBalance();
         const isBalanceNotEnough = lamports >= currentBalanceInLamports;
         if (isBalanceNotEnough) {
             const errMessage = `Wallet ${fromWallet.getIdentifier()} does not have requested amount of lamports(${lamports}) to send to ${toPublicKey}`
-            throw new Error(errMessage);
+            txOrErr.err = new Error(errMessage);
+            return txOrErr;
         }
     }
 
@@ -34,7 +41,8 @@ export async function prepareTransaction(
         lamports: lamports,
     });
     transaction.add(transferInstruction);
-    return transaction
+    txOrErr.tx = transaction
+    return txOrErr;
 }
 
 // TODO: make it able to take tx as a parameter
@@ -44,7 +52,9 @@ export async function transfer(connection: Connection, fromWallet: Wallet, toPub
     try {
         const recentBlockHash: BlockhashWithExpiryBlockHeight = await connection.getLatestBlockhash()
         let signatures: Array<Uint8Array> = new Array<Uint8Array>(1);
-        let tx: Transaction = await prepareTransaction(fromWallet, toPublicKey, lamports, recentBlockHash)
+        let txOrError: TransactionOrError = await prepareTransaction(fromWallet, toPublicKey, lamports, recentBlockHash)
+        if (null != txOrError.err || null == txOrError.tx) return txSignature;
+        let tx: Transaction = txOrError.tx;
         signatures[0] = fromWallet.sign(tx)
         const txMessage = tx.compileMessage();
         const versionedTransaction: VersionedTransaction = new VersionedTransaction(txMessage, signatures)
@@ -63,6 +73,7 @@ export async function airdrop(connection: Connection, toWallet: Wallet, lamports
     )
     if (confirmer) {
         const signatureResult: SignatureResult = await confirmer.confirm(airdropSignature);
-        logWithTrace(logTrace, `confirmation result - ${signatureResult} : ${["successful", "failed"][+(signatureResult.err != null)]} `)
+        const hasError = signatureResult.err != null
+        logWithTrace(logTrace, `confirmation is ${["successful", "failed"][+(hasError)]} `)
     }
 }
