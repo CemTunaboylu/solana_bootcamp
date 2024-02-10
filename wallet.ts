@@ -30,7 +30,7 @@ export async function prepareTransaction(
     toPublicKey: PublicKey,
     lamports: number,
     recentBlockHash: BlockhashWithExpiryBlockHeight,
-    balanceCheck: boolean = false
+    shouldCheckBalance: boolean = false
 ): Promise<TransactionOrError> {
     // TODO: this currently is not guaranteed to be consistent
     if (balanceCheck) {
