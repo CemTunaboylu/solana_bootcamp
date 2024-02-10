@@ -8,7 +8,7 @@ function log(...msg: any[]) {
 
 function logWithTrace(trace: string, ...msg: any[]) {
     if (VERBOSE)
-        console.log(`[%{trace}]-`, msg)
+        console.log(`[${trace}]-`, msg)
 }
 
 export { log, logWithTrace };
