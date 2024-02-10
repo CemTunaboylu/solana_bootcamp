@@ -48,5 +48,5 @@ export interface WalletVault {
 }
 
 export interface TaggedRetriever {
-    get(tag: string): Array<Wallet>
+    getWalletsWithTag(tag: string): Array<Wallet>
 }
