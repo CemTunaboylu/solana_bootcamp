@@ -47,6 +47,15 @@ export interface WalletVault {
     del(identifier: string, wallet: Wallet): WalletVaultDelResult
 }
 
+export enum TaggingResult {
+    Successful = 0,
+    InvalidIdentifier,
+    InvalidTag,
+    NoSuchWallet,
+    Failed,
+}
+
 export interface TaggedRetriever {
     getWalletsWithTag(tag: string): Array<Wallet>
+    tagWalletWithIdentifier(identifier: string, tag: string): TaggingResult
 }
