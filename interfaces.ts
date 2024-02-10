@@ -40,8 +40,6 @@ enum WalletVaultDelResult {
     Failed,
 }
 interface WalletVault {
-    identifierWalletMap: Map<string, Wallet>
-
     get(identifier: string): Wallet
     set(identifier: string, wallet: Wallet): WalletVaultSetResult
     del(identifier: string, wallet: Wallet): WalletVaultDelResult
