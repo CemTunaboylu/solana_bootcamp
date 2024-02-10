@@ -23,15 +23,11 @@ export async function prepareTransaction(
         }
     }
 
-    // Create a new transaction
-    // let transaction = createTransaction({ version: 0 });
     let transaction = new Transaction({
         feePayer: fromWallet.getPublicKey(),
         blockhash: recentBlockHash.blockhash,
         lastValidBlockHeight: recentBlockHash.lastValidBlockHeight
     });
-    // tx => appendTransactionInstruction(createTransferInstruction(myAddress, toAddress, amountInLamports), tx),
-    // let transaction = new Transaction();
     const transferInstruction = SystemProgram.transfer({
         fromPubkey: fromWallet.getPublicKey(),
         toPubkey: toPublicKey,
