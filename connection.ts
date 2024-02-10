@@ -1,13 +1,13 @@
 import { Connection, clusterApiUrl, Cluster } from "@solana/web3.js";
 
-enum ConnectionType {
+export enum ConnectionType {
     LOCALHOST = "http://127.0.0.1:8899",
     TESTNET = "testnet"
 }
 
 const NO_TLS = false
 
-class ConnectionManager {
+export class ConnectionManager {
     connectionsOfTypes: Map<ConnectionType, Connection>;
 
     constructor() {
