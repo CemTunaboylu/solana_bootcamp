@@ -36,7 +36,8 @@ export enum WalletVaultSetResult {
 
 export enum WalletVaultDelResult {
     Successful = 0,
-    NoSuchIdentifier,
+    InvalidIdentifier,
+    NoSuchWallet,
     Failed,
 }
 
@@ -46,6 +47,6 @@ export interface WalletVault {
     del(identifier: string, wallet: Wallet): WalletVaultDelResult
 }
 
-interface TaggedRetriever {
-    get(tag: string): Wallet[]
+export interface TaggedRetriever {
+    get(tag: string): Array<Wallet>
 }
