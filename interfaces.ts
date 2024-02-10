@@ -46,3 +46,7 @@ interface WalletVault {
     set(identifier: string, wallet: Wallet): WalletVaultSetResult
     del(identifier: string, wallet: Wallet): WalletVaultDelResult
 }
+
+interface TaggedRetriever {
+    get(tag: string): Wallet[]
+}
