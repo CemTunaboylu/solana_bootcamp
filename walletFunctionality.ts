@@ -81,7 +81,6 @@ export function createSignatures(wallets: Wallet[], tx: Transaction): Array<Uint
     return signatures;
 }
 
-// TODO: make it able to take tx as a parameter
 // TODO: add preTransfer and postTransfer
 export async function transfer(
     connection: Connection,
