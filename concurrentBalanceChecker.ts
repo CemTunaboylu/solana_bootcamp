@@ -43,7 +43,7 @@ export class ConcurrentBalanceChecker implements BalanceChecker {
     }
 
     cachedBalanceWithNullIfDue(identifier: string): number | null { // null indicates not in the cahce OR it is due, time to fetch it 
-        if (this.cache.has(identifier)) return ConcurrentBalanceChecker.noOrInvalidBalance;
+        if (!this.cache.has(identifier)) return ConcurrentBalanceChecker.noOrInvalidBalance;
         const balanceAndTimestamp = this.cache.get(identifier);
         if (balanceAndTimestamp?.[1] >= this.due)
             return ConcurrentBalanceChecker.noOrInvalidBalance
