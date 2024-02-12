@@ -1,13 +1,13 @@
 import { Connection, SystemProgram, Transaction, BlockhashWithExpiryBlockHeight, PublicKey, TransactionSignature, SignatureResult, VersionedTransaction } from '@solana/web3.js';
 
 import { logWithTrace } from "./logging";
-import { Wallet, TransactionConfirmer } from "./interfaces";
+import { Wallet, TransactionConfirmer, BalanceChecker } from "./interfaces";
 
 async function New(): Promise<Wallet> {
     throw new Error("not implemented");
 }
 
-class TransactionOrError {
+export class TransactionOrError {
     tx: Transaction | null;
     err: Error | null;
 
@@ -30,16 +30,11 @@ export async function prepareTransaction(
     toPublicKey: PublicKey,
     lamports: number,
     recentBlockHash: BlockhashWithExpiryBlockHeight,
-    shouldCheckBalance: boolean = false
+    balanceChecker: BalanceChecker
 ): Promise<TransactionOrError> {
-    // TODO: this currently is not guaranteed to be consistent
-    if (balanceCheck) {
-        let currentBalanceInLamports = await fromWallet.getBalance();
-        const isBalanceNotEnough = lamports >= currentBalanceInLamports;
-        if (isBalanceNotEnough) {
-            const errMessage = `Wallet ${fromWallet.getIdentifier()} does not have requested amount of lamports(${lamports}) to send to ${toPublicKey}`
-            return new TransactionOrError(null, new Error(errMessage))
-        }
+    if (null != balanceChecker && !balanceChecker.doesHaveEnoughBalance(fromWallet, lamports)) {
+        const errMessage = `Wallet ${fromWallet.getIdentifier()} does not have requested amount of lamports(${lamports}) to send to ${toPublicKey}`
+        return new TransactionOrError(null, new Error(errMessage))
     }
     let transaction = new Transaction({
         feePayer: fromWallet.getPublicKey(),
@@ -66,12 +61,18 @@ function createSignatures(wallets: Wallet[], tx: Transaction): Array<Uint8Array>
 
 // TODO: make it able to take tx as a parameter
 // TODO: add preTransfer and postTransfer
-export async function transfer(connection: Connection, fromWallet: Wallet, toPublicKey: PublicKey, lamports: number): Promise<TransactionSignature> {
+export async function transfer(
+    connection: Connection,
+    fromWallet: Wallet,
+    toPublicKey: PublicKey,
+    lamports: number,
+    balanceChecker: BalanceChecker
+): Promise<TransactionSignature> {
     const logTrace = 'Transfer'
     let txSignature: TransactionSignature = "";
     try {
         const recentBlockHash: BlockhashWithExpiryBlockHeight = await connection.getLatestBlockhash()
-        let txOrError: TransactionOrError = await prepareTransaction(fromWallet, toPublicKey, lamports, recentBlockHash)
+        let txOrError: TransactionOrError = await prepareTransaction(fromWallet, toPublicKey, lamports, recentBlockHash, balanceChecker)
         if (txOrError.isTransactionFormationFailed()) return txSignature; // return empty hash
         // TODO: check if this tx has been seen before i.e. handle duplicates
         const tx: Transaction = txOrError.getTransaction();

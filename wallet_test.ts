@@ -1,7 +1,7 @@
 import { Connection, TransactionSignature, SignatureResult, LAMPORTS_PER_SOL, BlockhashWithExpiryBlockHeight } from "@solana/web3.js";
 
-import { Wallet, BalanceChecker } from './interfaces';
-import { TransactionOrError, airdrop, prepareTransaction, transfer } from "./wallet"
+import { Wallet, BalanceChecker, IdentifiedBalanceMap } from './interfaces';
+import { airdrop, prepareTransaction, transfer } from "./walletFunctionality"
 import { ConnectionManager, ConnectionType } from './connection';
 import { logWithTrace } from './logging';
 import { PlainWallet } from "./plainWallet";
