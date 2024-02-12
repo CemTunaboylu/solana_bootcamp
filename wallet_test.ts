@@ -4,7 +4,7 @@ import { Wallet, TransactionConfirmer } from './interfaces';
 import { airdrop, prepareTransaction, transfer } from "./wallet"
 import { ConnectionManager, ConnectionType } from './connection';
 import { logWithTrace } from './logging';
-import { TestWallet } from "./wallet_impl";
+import { PlainWallet } from "./plainWallet";
 
 class TransactionConfirmerBySignature implements TransactionConfirmer {
     connection: Connection;
@@ -25,15 +25,15 @@ class TransactionConfirmerBySignature implements TransactionConfirmer {
 
 type TestController = {
     testConnectionManager: ConnectionManager,
-    sourceWallet: TestWallet,
-    targetWallet: TestWallet,
+    sourceWallet: PlainWallet,
+    targetWallet: PlainWallet,
 }
 
 function createTestController(): TestController {
     return {
         testConnectionManager: new ConnectionManager(),
-        sourceWallet: new TestWallet(),
-        targetWallet: new TestWallet(),
+        sourceWallet: new PlainWallet(),
+        targetWallet: new PlainWallet(),
     }
 }
 
@@ -43,7 +43,7 @@ async function test_airdrop(conn: Connection, wallet: Wallet, solAmount: number 
     await airdrop(conn, wallet, solAmount * LAMPORTS_PER_SOL, confirmer);
 }
 
-async function test_prepareTransaction(conn: Connection, sourceTestWallet: TestWallet, targetWallet: Wallet) {
+async function test_prepareTransaction(conn: Connection, sourceTestWallet: PlainWallet, targetWallet: Wallet) {
     const recentBlockHash: BlockhashWithExpiryBlockHeight = await conn.getLatestBlockhash()
     type TestCase = { testName: string, sourceBalance: number, lamportsToSend: number, expectsError: boolean };
     const scopeTrace = "test_prepareTransaction"
@@ -98,7 +98,8 @@ async function test_prepareTransaction(conn: Connection, sourceTestWallet: TestW
     sourceTestWallet.balance = balance;
 }
 
-async function test_transfer(conn: Connection, sourceTestWallet: TestWallet, targetWallet: Wallet) {
+
+async function test_transfer(conn: Connection, sourceTestWallet: PlainWallet, targetWallet: Wallet) {
     const scopeTrace = "test_transfer"
     const balance: number = 1000;
     let lamportsToSend: number = 1 * LAMPORTS_PER_SOL;
