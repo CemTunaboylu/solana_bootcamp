@@ -1,4 +1,3 @@
-import { TaggedRetriever } from './interfaces';
 import {
     Wallet,
     WalletVault,
@@ -21,17 +20,12 @@ export class TaggedConcurrentWalletVault implements TaggedRetriever, WalletVault
         this.tagToWalletsMap = new Map();
     }
 
-    static normalize_identifier(identifier: string): string {
-        return identifier.trim().normalize().toLowerCase();
-    }
-
     static normalize_tag(tag: string): string {
         return tag.trim().normalize().toLowerCase();
     }
 
     // methods for WalletVault
     get(identifier: string): Wallet | null {
-        identifier = TaggedConcurrentWalletVault.normalize_identifier(identifier);
         if (!this.identifierToWalletsMap.has(identifier)) {
             return null;
         }
@@ -40,7 +34,6 @@ export class TaggedConcurrentWalletVault implements TaggedRetriever, WalletVault
     }
 
     set(identifier: string, wallet: Wallet): WalletVaultSetResult {
-        identifier = TaggedConcurrentWalletVault.normalize_identifier(identifier);
 
         if ("" == identifier)
             return WalletVaultSetResult.InvalidIdentifier;
@@ -64,7 +57,6 @@ export class TaggedConcurrentWalletVault implements TaggedRetriever, WalletVault
         this.wallets.pop()
     }
     del(identifier: string, wallet: Wallet): WalletVaultDelResult {
-        identifier = TaggedConcurrentWalletVault.normalize_identifier(identifier);
 
         if ("" == identifier)
             return WalletVaultDelResult.InvalidIdentifier;
@@ -83,7 +75,7 @@ export class TaggedConcurrentWalletVault implements TaggedRetriever, WalletVault
     // methods for TaggedRetriever
 
     getWalletsWithTag(tag: string): Array<Wallet> {
-        tag = TaggedConcurrentWalletVault.normalize_identifier(tag);
+        tag = TaggedConcurrentWalletVault.normalize_tag(tag);
         if (!this.tagToWalletsMap.has(tag)) {
             return new Array<Wallet>();
         }
@@ -94,10 +86,9 @@ export class TaggedConcurrentWalletVault implements TaggedRetriever, WalletVault
     }
 
     tagWalletWithIdentifier(identifier: string, tag: string): TaggingResult {
-        tag = TaggedConcurrentWalletVault.normalize_identifier(tag);
-        if ("" == tag) return TaggingResult.InvalidTag
-        identifier = TaggedConcurrentWalletVault.normalize_identifier(identifier);
         if ("" == identifier) return TaggingResult.InvalidIdentifier
+        tag = TaggedConcurrentWalletVault.normalize_tag(tag);
+        if ("" == tag) return TaggingResult.InvalidTag
 
         if (!this.identifierToWalletsMap.has(identifier))
             return TaggingResult.NoSuchWallet;
