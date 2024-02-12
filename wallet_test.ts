@@ -1,4 +1,4 @@
-import { Connection, TransactionSignature, SignatureResult, LAMPORTS_PER_SOL, BlockhashWithExpiryBlockHeight } from "@solana/web3.js";
+import { Connection, TransactionSignature, LAMPORTS_PER_SOL, BlockhashWithExpiryBlockHeight } from "@solana/web3.js";
 
 import { Wallet, BalanceChecker, IdentifiedBalanceMap } from './interfaces';
 import { airdrop, prepareTransaction, transfer } from "./walletFunctionality"
@@ -7,22 +7,28 @@ import { logWithTrace } from './logging';
 import { PlainWallet } from "./plainWallet";
 import { TransactionConfirmerBySignature } from "./transactionConfirmerBySignature"
 
-
-
 class MockBalanceController implements BalanceChecker {
     toReturn: number | null; // in lamports
-    toReturnList: number[] | null; // in lamports
+    toReturnMap: IdentifiedBalanceMap = new Map<string, number>; // in lamports
 
-    constructor(n: number | null, nList: number[] | null) {
+    constructor(n: number | null, nMap?: IdentifiedBalanceMap) {
         this.toReturn = n
-        this.toReturnList = nList
+        if (nMap)
+            this.toReturnMap = nMap
     }
-
-    async confirm(txSignature: TransactionSignature): Promise<SignatureResult> {
-        // TODO: fix with removing deprecated confirmation
-        let responseAndContext = await this.connection.confirmTransaction(txSignature, 'finalized');
-        logWithTrace(this.logTrace, `confirmed ${txSignature} is in slot ${responseAndContext.context.slot}`)
-        return responseAndContext.value
+    updateBalances(...wallets: Wallet[]): void {
+        return;
+    }
+    getBalance(wallet: Wallet): Promise<number | null> {
+        return Promise.resolve(this.toReturn);
+    }
+    getBalances(...wallets: Wallet[]): Promise<IdentifiedBalanceMap> {
+        return Promise.resolve(this.toReturnMap);
+    }
+    doesHaveEnoughBalance(wallet: Wallet, forAmountInLamports: number): boolean {
+        const isBalanceNotNull = null != this.toReturn;
+        const isBalanceBigger = this.toReturn as number > forAmountInLamports;
+        return isBalanceNotNull && isBalanceBigger;
     }
 }
 
@@ -71,14 +77,13 @@ async function test_prepareTransaction(conn: Connection, sourceTestWallet: Plain
         }
     ]
 
-    const balance = await sourceTestWallet.getBalance()
 
     for (let testCase of testCases) {
-        sourceTestWallet.balance = testCase.sourceBalance;
+        let mockBalanceChecker = new MockBalanceController(testCase.sourceBalance);
         const sourceWallet = sourceTestWallet as Wallet;
         let testResultMsg: string = "succesful-test";
         let passed = true;
-        const txOrError = await prepareTransaction(sourceWallet, targetWallet.getPublicKey(), testCase.lamportsToSend, recentBlockHash, true);
+        const txOrError = await prepareTransaction(sourceWallet, targetWallet.getPublicKey(), testCase.lamportsToSend, recentBlockHash, mockBalanceChecker);
         if (null != txOrError.err || null == txOrError.tx) {
             passed = testCase.expectsError;
             testResultMsg = [
@@ -97,22 +102,20 @@ async function test_prepareTransaction(conn: Connection, sourceTestWallet: Plain
         }
         logWithTrace(scopeTrace + testCase.testName, `${testResultMsg} : ${["failed", "successful"][+(passed)]}`)
     }
-
-    sourceTestWallet.balance = balance;
 }
 
 
 async function test_transfer(conn: Connection, sourceTestWallet: PlainWallet, targetWallet: Wallet) {
     const scopeTrace = "test_transfer"
-    const balance: number = 1000;
+    const sourceBalanceInLamports: number = 1000 * LAMPORTS_PER_SOL;
     let lamportsToSend: number = 1 * LAMPORTS_PER_SOL;
 
-    sourceTestWallet.balance = balance
+    let mockBalanceChecker = new MockBalanceController(sourceBalanceInLamports);
     const sourceWallet = sourceTestWallet as Wallet;
 
-    const txSignature = await transfer(conn, sourceWallet, targetWallet.getPublicKey(), lamportsToSend);
-    const empty = "" === txSignature
-    const testResult = `transaction signature is ${txSignature}, test is ${["successful", "failed"][+(empty)]}`
+    const txSignature: TransactionSignature = await transfer(conn, sourceWallet, targetWallet.getPublicKey(), lamportsToSend, mockBalanceChecker);
+    const failed = "" === txSignature;
+    const testResult = `transaction signature is ${txSignature}, test is ${["successful", "failed"][+(failed)]}`
     logWithTrace(scopeTrace, testResult)
 
 }
