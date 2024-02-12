@@ -108,11 +108,11 @@ export class ConcurrentBalanceChecker implements BalanceChecker {
         return identifiedBalanceMap;
     }
 
-    doesHaveEnoughBalance(wallet: Wallet, forAmountInLamports: number): boolean {
+    async doesHaveEnoughBalance(wallet: Wallet, forAmountInLamports: number): Promise<boolean> {
         const identifier = wallet.getIdentifier();
-        if (!this.cache.has(identifier)) return false
-        const balanceAndTimestamp = this.cache.get(identifier);
-        const balance = balanceAndTimestamp?.[0]
-        return balance as number > forAmountInLamports
+        const balance = await this.getBalance(wallet);
+        if (balance)
+            return balance as number > forAmountInLamports
+        return false
     }
 }

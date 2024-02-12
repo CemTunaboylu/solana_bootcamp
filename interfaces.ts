@@ -24,7 +24,7 @@ export interface BalanceChecker {
     getBalance(wallet: Wallet): Promise<number | null>
     getBalances(...wallets: Wallet[]): Promise<IdentifiedBalanceMap>
     updateBalances(...wallets: Wallet[]): void
-    doesHaveEnoughBalance(wallet: Wallet, forAmountInLamports: number): boolean
+    doesHaveEnoughBalance(wallet: Wallet, forAmountInLamports: number): Promise<boolean>
 }
 
 export interface TransactionConfirmer {
