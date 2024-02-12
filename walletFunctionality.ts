@@ -90,7 +90,7 @@ export async function transfer(
     toPublicKey: PublicKey,
     balanceChecker?: BalanceChecker
 ): Promise<TransactionSignature> {
-    const logTrace = 'Transfer'
+    const logTrace = 'transfer'
     let txSignature: TransactionSignature = "";
     try {
         const recentBlockHash: BlockhashWithExpiryBlockHeight = await connection.getLatestBlockhash()
