@@ -86,6 +86,7 @@ export function createSignatures(wallets: Wallet[], tx: Transaction): Array<Uint
 export async function transfer(
     connection: Connection,
     fromWallet: Wallet,
+    lamports: number,
     toPublicKey: PublicKey,
     balanceChecker?: BalanceChecker
 ): Promise<TransactionSignature> {
