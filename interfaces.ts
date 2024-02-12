@@ -4,6 +4,13 @@ import { mkdirSync } from 'fs';
 
 export type WalletCustomizerFunction = (wallet: Wallet) => void;
 
+export type Ed25519SecretKey = Uint8Array;
+
+export type BalanceRetrieval = (conn: Connection, ...wallets: Wallet[]) => number[];
+
+export type IdentifiedBalance = { identifier: string, balance: number | null };
+export type IdentifiedBalanceMap = Map<string, number | null>
+
 export interface Wallet {
     getIdentifier(): string
     getPublicKey(): PublicKey
