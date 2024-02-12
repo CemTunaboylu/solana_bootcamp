@@ -1,18 +1,21 @@
 import { Connection, TransactionSignature, SignatureResult, LAMPORTS_PER_SOL, BlockhashWithExpiryBlockHeight } from "@solana/web3.js";
 
-import { Wallet, TransactionConfirmer } from './interfaces';
-import { airdrop, prepareTransaction, transfer } from "./wallet"
+import { Wallet, BalanceChecker } from './interfaces';
+import { TransactionOrError, airdrop, prepareTransaction, transfer } from "./wallet"
 import { ConnectionManager, ConnectionType } from './connection';
 import { logWithTrace } from './logging';
 import { PlainWallet } from "./plainWallet";
+import { TransactionConfirmerBySignature } from "./transactionConfirmerBySignature"
 
-class TransactionConfirmerBySignature implements TransactionConfirmer {
-    connection: Connection;
-    logTrace: string;
 
-    constructor(connection: Connection, logTrace: string) {
-        this.connection = connection;
-        this.logTrace = logTrace;
+
+class MockBalanceController implements BalanceChecker {
+    toReturn: number | null; // in lamports
+    toReturnList: number[] | null; // in lamports
+
+    constructor(n: number | null, nList: number[] | null) {
+        this.toReturn = n
+        this.toReturnList = nList
     }
 
     async confirm(txSignature: TransactionSignature): Promise<SignatureResult> {
