@@ -39,9 +39,10 @@ export async function prepareTransaction(
     toPublicKey: PublicKey,
     lamports: number,
     recentBlockHash: BlockhashWithExpiryBlockHeight,
-    balanceChecker?: BalanceChecker
+    balanceChecker?: BalanceChecker,
+    sign: boolean = true
 ): Promise<TransactionOrError> {
-    if (null != balanceChecker && !balanceChecker.doesHaveEnoughBalance(fromWallet, lamports)) {
+    if (null != balanceChecker && !await balanceChecker.doesHaveEnoughBalance(fromWallet, lamports)) {
         const errMessage = `Wallet ${fromWallet.getIdentifier()} does not have requested amount of lamports(${lamports}) to send to ${toPublicKey}`
         return new TransactionOrError(null, new Error(errMessage))
     }
@@ -86,8 +87,7 @@ export async function transfer(
     connection: Connection,
     fromWallet: Wallet,
     toPublicKey: PublicKey,
-    lamports: number,
-    balanceChecker: BalanceChecker
+    balanceChecker?: BalanceChecker
 ): Promise<TransactionSignature> {
     const logTrace = 'Transfer'
     let txSignature: TransactionSignature = "";
