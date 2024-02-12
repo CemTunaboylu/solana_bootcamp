@@ -30,7 +30,7 @@ export async function prepareTransaction(
     toPublicKey: PublicKey,
     lamports: number,
     recentBlockHash: BlockhashWithExpiryBlockHeight,
-    balanceChecker: BalanceChecker
+    balanceChecker?: BalanceChecker
 ): Promise<TransactionOrError> {
     if (null != balanceChecker && !balanceChecker.doesHaveEnoughBalance(fromWallet, lamports)) {
         const errMessage = `Wallet ${fromWallet.getIdentifier()} does not have requested amount of lamports(${lamports}) to send to ${toPublicKey}`
