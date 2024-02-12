@@ -8,18 +8,23 @@ export type Ed25519SecretKey = Uint8Array;
 
 export type BalanceRetrieval = (conn: Connection, ...wallets: Wallet[]) => number[];
 
-export type IdentifiedBalance = { identifier: string, balance: number | null };
 export type IdentifiedBalanceMap = Map<string, number | null>
 
 export interface Wallet {
     getIdentifier(): string
     getPublicKey(): PublicKey
-    getBalance(): Promise<number>
 
     setIdentifier(identifier: string): boolean
     setPrivateKey(privateKey: Uint8Array): boolean
 
     sign(tx: Transaction): Uint8Array
+}
+
+export interface BalanceChecker {
+    getBalance(wallet: Wallet): Promise<number | null>
+    getBalances(...wallets: Wallet[]): Promise<IdentifiedBalanceMap>
+    updateBalances(...wallets: Wallet[]): void
+    doesHaveEnoughBalance(wallet: Wallet, forAmountInLamports: number): boolean
 }
 
 export interface TransactionConfirmer {
