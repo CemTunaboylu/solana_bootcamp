@@ -1,13 +1,35 @@
 
-import { Connection } from "@solana/web3.js";
+import { Connection, PublicKey } from "@solana/web3.js";
 
 import { Wallet, BalanceChecker, IdentifiedBalanceMap } from './interfaces';
-import { queryBalancesConcurrently } from "./consistent_balance";
 
 import { logWithTrace } from "./logging";
 
 type timestamp = number;
 const OneHour = 3600000;
+
+async function queryBalancesConcurrently(connection: Connection, ...wallets: Wallet[]): Promise<IdentifiedBalanceMap> {
+    const balances = await Promise.all(
+        wallets.map(
+            async wallet => {
+                const publicKey = wallet.getPublicKey();
+                const identifier = wallet.getIdentifier();
+                try {
+                    const balance = await connection.getBalance(publicKey);
+                    return { identifier, balance };
+                } catch (error) {
+                    console.error(`Error querying balance for ${publicKey}: ${error}`);
+                    return { identifier, balance: 0 };
+                }
+            })
+    );
+    let map = new Map<string, number>();
+    for (let index = 0; index < balances.length; index++) {
+        const element = balances[index];
+        map.set(element.identifier, element.balance);
+    }
+    return map;
+}
 
 export class ConcurrentBalanceChecker implements BalanceChecker {
     conn: Connection;
