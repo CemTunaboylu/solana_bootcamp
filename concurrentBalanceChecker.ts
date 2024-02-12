@@ -8,6 +8,14 @@ import { logWithTrace } from "./logging";
 type timestamp = number;
 const OneHour = 3600000;
 
+function isDueIn(timestamp: number | string, due: number): boolean {
+    const now = new Date();
+    const given = new Date(timestamp)
+    const diffInMilliseconds = now.getTime() - given.getTime();
+    return diffInMilliseconds < due;
+
+}
+
 async function queryBalancesConcurrently(connection: Connection, ...wallets: Wallet[]): Promise<IdentifiedBalanceMap> {
     const balances = await Promise.all(
         wallets.map(
@@ -45,9 +53,10 @@ export class ConcurrentBalanceChecker implements BalanceChecker {
     cachedBalanceWithNullIfDue(identifier: string): number | null { // null indicates not in the cahce OR it is due, time to fetch it 
         if (!this.cache.has(identifier)) return ConcurrentBalanceChecker.noOrInvalidBalance;
         const balanceAndTimestamp = this.cache.get(identifier);
-        if (balanceAndTimestamp?.[1] >= this.due)
+        if (undefined == balanceAndTimestamp) return null;
+        if (isDueIn(balanceAndTimestamp?.[1], this.due))
             return ConcurrentBalanceChecker.noOrInvalidBalance
-        return balanceAndTimestamp?.[0] as number
+        return balanceAndTimestamp[0] as number
     }
 
     divideValidAndDueByTimestamp(...wallets: Wallet[]): [IdentifiedBalanceMap, Wallet[]] {
