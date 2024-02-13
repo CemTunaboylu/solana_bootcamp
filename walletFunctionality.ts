@@ -1,10 +1,27 @@
-import { Connection, SystemProgram, Transaction, BlockhashWithExpiryBlockHeight, PublicKey, TransactionSignature, SignatureResult, VersionedTransaction } from '@solana/web3.js';
+import {
+    Connection,
+    SystemProgram,
+    Transaction,
+    BlockhashWithExpiryBlockHeight,
+    PublicKey,
+    TransactionSignature,
+    SignatureResult,
+    VersionedTransaction,
+    Keypair
+} from '@solana/web3.js';
 
 import { logWithTrace } from "./logging";
 import { Wallet, TransactionConfirmer, BalanceChecker } from "./interfaces";
+import { ensureAtLeastOneWalletExists, extractFileName, readKeypairFromfile } from './fileUtilities';
+import { PlainWallet } from './plainWallet';
+import { WithIdentifier, WithKeypair } from './walletCustomizers';
 
-async function New(): Promise<Wallet> {
-    throw new Error("not implemented");
+async function New(filepath: string): Promise<Wallet> {
+    await ensureAtLeastOneWalletExists(filepath, Keypair.generate);
+    const keypair = await readKeypairFromfile(filepath)
+    const identifier = extractFileName(filepath);
+    const wallet = new PlainWallet(WithIdentifier(identifier), WithKeypair(keypair));
+    return wallet;
 }
 
 export class UnsignedTransaction {
