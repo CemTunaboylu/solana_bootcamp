@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs';
 import { existsSync, mkdirSync, readFileSync } from 'fs';
-import path from 'path';
+import { resolve } from 'path';
 
 import { log } from './logging';
 
@@ -17,7 +17,7 @@ export function ensureDirExists(dirPath: string): void {
 }
 
 export async function ensureAtLeastOneWalletExists(filePath: string, keyCreationFunction: () => Keypair): Promise<void> {
-    const fullPath = path.resolve(filePath);
+    const fullPath = resolve(filePath);
     try {
         await fs.access(fullPath); // Check if the file exists
         log('Found the existing wallet.');
@@ -30,7 +30,7 @@ export async function ensureAtLeastOneWalletExists(filePath: string, keyCreation
 }
 
 export async function writeKeyPairToFile(filePath: string, keyPair: Keypair) {
-    const fullPath = path.resolve(filePath);
+    const fullPath = resolve(filePath);
     await fs.writeFile(fullPath, JSON.stringify(Array.from(keyPair.secretKey)));
     log('Keypair written successfully.');
 }
