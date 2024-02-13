@@ -10,7 +10,71 @@ async function New(): Promise<Wallet> {
     throw new Error("not implemented");
 }
 
-// expects wallets[i] will be transferring lampors[i]
+/* handles many-to-many or many-to-one relationships with source and target wallets, multiple elements are assumed to be of same length 
+     one can have the following:
+    All combinations of the following:
+     - Many/one source wallets to many/one target wallet with many/one lamports  
+    Examples:
+     - Many source wallets to many target wallets with many lamports (they all are assumed to be of same length) 
+     - Many source wallets to many target wallets with same amount of lamports L (source and target are assumed to be of same length) where 
+        each source sends L lamports to target
+    note that they are grouped according to their indices.
+*/
+
+type TransactionMapping = {
+    wallet?: Wallet,
+    lamport?: number,
+    publickey?: PublicKey
+}
+
+type AsyncTransactionMappingGenerator = () => AsyncGenerator<TransactionMapping, void, unknown> // <parameters, returnType, next>
+type TypeKey = "wallet" | "publickey" | "number"
+
+function typeToTypeKeyValue(obj: any): TypeKey {
+    if (obj instanceof PublicKey) return "publickey" as TypeKey;
+    let typeString: string = typeof obj
+    if ("object" === typeString && "getIdentifier" in obj)
+        typeString = "wallet"
+    return typeString as TypeKey
+}
+
+type Assigner = (ix: number, txMapping: TransactionMapping) => void;
+
+export async function* dynamicMappingGenerator(tobeMappedInOrder: [Wallet[], number[], PublicKey[]]): AsyncGenerator<TransactionMapping, void, unknown> {
+    const logTrace = "dynamicMappingGenerator";
+    let wnpAssignments: Assigner[] = []
+    const lengths = tobeMappedInOrder.map(e => e.length).filter(l => l > 1);
+    let shortestLength = lengths ? Math.min(...lengths) : 1; // 1 for the case where each one has length 1
+
+    for (let index = 0; index < tobeMappedInOrder.length; index++) {
+        const element = tobeMappedInOrder[index];
+        if (undefined == element) continue; // should not happen
+        let toPush;
+        toPush = (ix: number, txMapping: TransactionMapping) => {
+            switch (typeof element[0]) {
+                case "number":
+                    txMapping.lamport = (element.length == 1 ? element[0] : element[ix]) as number
+                    break;
+                default:
+                    if (element[0] instanceof PublicKey)
+                        txMapping.publickey = (element.length == 1 ? element[0] : element[ix]) as PublicKey
+                    else
+                        txMapping.wallet = (element.length == 1 ? element[0] : element[ix]) as Wallet
+                    break;
+            }
+        }
+        wnpAssignments.push(toPush);
+    }
+
+    for (let index = 0; index < shortestLength; index++) {
+        let transactionMapping: TransactionMapping = {}
+        for (let entity = 0; entity < tobeMappedInOrder.length; entity++) {
+            wnpAssignments[entity](index, transactionMapping);
+        }
+        yield transactionMapping;
+    }
+}
+
 // TODO: add strategies for matching many wallets can send the same amount of lamports to that many wallets, or one wallet (3 strategies) 
 function divideIntoEnoughAndLackingBalancedWallets(identifiedBalanceMap: IdentifiedBalanceMap, wallets: Wallet[], lamports: number[]): [Wallet[], Wallet[]] {
     let enough: Wallet[] = new Array<Wallet>();
