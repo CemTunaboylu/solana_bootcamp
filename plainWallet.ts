@@ -38,10 +38,10 @@ export class PlainWallet implements Wallet {
         return true;
     }
 
-    async loadFrom(filePath: string): Wallet {
+    async loadFrom(filePath: string): Promise<Wallet> {
         const keypair = await readKeypairFromfile(filePath);
         const identifier = extractFileName(filePath);
-        return new PlainWallet(WithIdentifier(identifier), WithKeypair(keypair))
+        return Promise.resolve(new PlainWallet(WithIdentifier(identifier), WithKeypair(keypair)))
     }
 
     async dump(dirPath: string) {
