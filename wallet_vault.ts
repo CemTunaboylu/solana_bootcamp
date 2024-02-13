@@ -33,7 +33,8 @@ export class TaggedConcurrentWalletVault implements TaggedRetriever, WalletVault
         return this.wallets[index];
     }
 
-    set(identifier: string, wallet: Wallet): WalletVaultSetResult {
+    set(wallet: Wallet): WalletVaultSetResult {
+        const identifier = wallet.getIdentifier();
 
         if ("" == identifier)
             return WalletVaultSetResult.InvalidIdentifier;
