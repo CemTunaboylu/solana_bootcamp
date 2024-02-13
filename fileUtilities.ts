@@ -16,6 +16,16 @@ export function ensureDirExists(dirPath: string): void {
     }
 }
 
+export async function listFilesInDirectory(directory: string = "./"): Promise<string[]> {
+    const dirPath = resolve(directory);
+    let files: string[] = []
+    try {
+        files = await fs.readdir(dirPath);
+    } catch (error) {
+    }
+    return files;
+}
+
 export async function ensureAtLeastOneWalletExists(filePath: string, keyCreationFunction: () => Keypair): Promise<void> {
     const fullPath = resolve(filePath);
     try {
