@@ -1,16 +1,35 @@
-import { Connection, SystemProgram, Transaction, BlockhashWithExpiryBlockHeight, PublicKey, TransactionSignature, SignatureResult, VersionedTransaction } from '@solana/web3.js';
+import {
+    Connection,
+    BlockhashWithExpiryBlockHeight,
+    PublicKey,
+    TransactionSignature,
+    SignatureResult,
+    VersionedTransaction,
+    Keypair
+} from '@solana/web3.js';
 
 import { logWithTrace } from "./logging";
-import { Wallet, TransactionConfirmer, BalanceChecker, IdentifiedBalanceMap, WalletVaultDelResult } from './interfaces';
-import { TransactionOrError, prepareTransaction, transfer, createSignatures, createVersionedTransactionFrom, transferTransaction, UnsignedTransaction } from "./walletFunctionality";
-import { recoverNested } from '@solana/spl-token';
+import {
+    Wallet,
+    TransactionConfirmer,
+    BalanceChecker,
+    IdentifiedBalanceMap,
+    WalletVault,
+} from './interfaces';
 
+import {
+    TransactionOrError,
+    prepareTransaction,
+    transferTransaction,
+    UnsignedTransaction
+} from "./walletFunctionality";
 
 import { ensureDirExists, readKeypairFromfile, listFilesInDirectory, extractFileName } from './fileUtilities';
 import { readFileSync } from 'fs';
 import { TaggedConcurrentWalletVault } from './wallet_vault';
 import { PlainWallet } from './plainWallet';
 import { WithIdentifier, WithKeypair } from './walletCustomizers';
+import { createInitializeDefaultAccountStateInstruction } from '@solana/spl-token';
 
 async function New(walletsDirectory: string = "./wallets", withCapacity?: number): Promise<WalletVault> {
     await ensureDirExists(walletsDirectory);
@@ -36,14 +55,13 @@ async function New(walletsDirectory: string = "./wallets", withCapacity?: number
         each source sends L lamports to target
     note that they are grouped according to their indices.
 */
-
 type TransactionMapping = {
     wallet?: Wallet,
     lamport?: number,
     publickey?: PublicKey
 }
 
-type AsyncTransactionMappingGenerator = () => AsyncGenerator<TransactionMapping, void, unknown> // <parameters, returnType, next>
+type AsyncTransactionMappingGenerator = (tobeMappedInOrder: TransactionTripletArray) => AsyncGenerator<TransactionMapping, void, unknown> // <parameters, returnType, next>
 type TypeKey = "wallet" | "publickey" | "number"
 
 function typeToTypeKeyValue(obj: any): TypeKey {
@@ -56,7 +74,9 @@ function typeToTypeKeyValue(obj: any): TypeKey {
 
 type Assigner = (ix: number, txMapping: TransactionMapping) => void;
 
-export async function* dynamicMappingGenerator(tobeMappedInOrder: [Wallet[], number[], PublicKey[]]): AsyncGenerator<TransactionMapping, void, unknown> {
+type TransactionTripletArray = [Wallet[], number[], PublicKey[]]
+
+export async function* dynamicMappingGenerator(tobeMappedInOrder: TransactionTripletArray): AsyncGenerator<TransactionMapping, void, unknown> {
     const logTrace = "dynamicMappingGenerator";
     let wnpAssignments: Assigner[] = []
     const lengths = tobeMappedInOrder.map(e => e.length).filter(l => l > 1);
@@ -91,63 +111,65 @@ export async function* dynamicMappingGenerator(tobeMappedInOrder: [Wallet[], num
     }
 }
 
-// TODO: add strategies for matching many wallets can send the same amount of lamports to that many wallets, or one wallet (3 strategies) 
-function divideIntoEnoughAndLackingBalancedWallets(identifiedBalanceMap: IdentifiedBalanceMap, wallets: Wallet[], lamports: number[]): [Wallet[], Wallet[]] {
-    let enough: Wallet[] = new Array<Wallet>();
-    let lacking: Wallet[] = new Array<Wallet>();
+async function divideIntoEnoughAndLackingBalancedWallets(
+    identifiedBalanceMap: IdentifiedBalanceMap,
+    wallets: Wallet[],
+    lamports: number[],
+    publicKeys: PublicKey[],
+): Promise<TransactionTripletArray[]> {
 
-    // assume that if they are not of same length, the parts that are matching are correct
-    const shortestLength = wallets.length < lamports.length ? wallets.length : lamports.length;
+    // let toProcessTriplets = [[] as Wallet[], [] as number[], [] as PublicKey[]];
+    let toProcessTriplets: TransactionTripletArray = [[], [], []]
+    let lackingTriplets: TransactionTripletArray = [[], [], []]
 
 
-    for (let index = 0; index < shortestLength; index++) {
-        const wallet = wallets[index];
-        const identifier = wallet.getIdentifier();
+    for await (const { wallet, lamport, publickey } of dynamicMappingGenerator([wallets, lamports, publicKeys])) {
+        const identifier = (wallet as Wallet).getIdentifier();
 
-        if (!identifiedBalanceMap.has(identifier)) {
-            // assume that if its balance cannot be retrieved, it does not have enough balance
-            lacking.push(wallet);
+        const balance = identifiedBalanceMap.get(identifier);
+        const undefinedProperty = (undefined == balance || undefined == lamport)
+        if (undefinedProperty || balance <= lamport) {
+            lackingTriplets[0].push(wallet as Wallet);
+            lackingTriplets[1].push(lamport as number);
+            lackingTriplets[2].push(publickey as PublicKey);
             continue;
         }
-        const balance = identifiedBalanceMap.get(identifier);
-        if (balance && balance > lamports[index]) enough.push(wallet)
-        else lacking.push(wallet)
+        toProcessTriplets[0].push(wallet as Wallet);
+        toProcessTriplets[1].push(lamport as number);
+        toProcessTriplets[2].push(publickey as PublicKey);
     }
-    return [enough, lacking]
+
+    return [toProcessTriplets, toProcessTriplets];
 
 }
-// TODO: have strategies, many to one, one to one: X wallets to X wallet, X wallets to 1 wallet
+// TODO: have strategies, many to one, one to one: X wallets to X wallet, X wallets to 1 wallet etc.
 export async function prepareTransactions(
     fromWallets: Array<Wallet>,
     toPublicKeys: Array<PublicKey>,
     lamports: Array<number>,
     recentBlockHash: BlockhashWithExpiryBlockHeight,
+    transactionMappingGenerator: AsyncTransactionMappingGenerator,
     balanceChecker?: BalanceChecker,
 ): Promise<Array<TransactionOrError>> {
-    let toBeProcessedWallets = fromWallets;
+    const logTrace = "prepareTransactions"
+    let toBeProcessedTriplets: TransactionTripletArray;
     if (balanceChecker) {
         const identifiedBalanceMap: IdentifiedBalanceMap = await balanceChecker.getBalances(...fromWallets);
-        const enoughAndLackingWallets = divideIntoEnoughAndLackingBalancedWallets(identifiedBalanceMap, fromWallets, lamports);
-        toBeProcessedWallets = enoughAndLackingWallets[0]
+        const enoughAndLackingTriplets = await divideIntoEnoughAndLackingBalancedWallets(identifiedBalanceMap, fromWallets, lamports, toPublicKeys);
+        toBeProcessedTriplets = enoughAndLackingTriplets[0];
+        if (enoughAndLackingTriplets[1].length > 0)
+            logWithTrace(logTrace, `there are discarded prospective transfers due unsufficient balance: ${enoughAndLackingTriplets[1]}`)
+    } else {
+        toBeProcessedTriplets = [fromWallets, lamports, toPublicKeys]
     }
-    // assume that if they are not of same length, the parts that are matching are correct
-    const shortestLength = Math.min(fromWallets.length, toPublicKeys.length, lamports.length);
-    let txOrErrs = new Array<TransactionOrError>(shortestLength);
-
-    for (let index = 0; index < shortestLength; index++) {
-        const wallet = toBeProcessedWallets[index];
-        const txOrError = await prepareTransaction(wallet, toPublicKeys[index], lamports[index], recentBlockHash)
-        let toPut;
-        if (txOrError.isTransactionFormationFailed()) {
-            const errMessage = `Could not form transaction for wallet ${wallet.getIdentifier()} to send to ${toPublicKeys[index]}, error: ${txOrError.err}`
-            toPut = new TransactionOrError(null, new Error(errMessage))
-        } else {
-            toPut = new TransactionOrError(txOrError.getTransaction(), null)
-        }
-        txOrErrs[index] = toPut;
+    // use this : let toBeProcessedWallets = fromWallets;
+    const promisesForTransactionsOrErrors = [];
+    for await (const { wallet, lamport, publickey } of dynamicMappingGenerator(toBeProcessedTriplets)) {
+        const txOrErrorPromise = prepareTransaction(wallet as Wallet, publickey as PublicKey, lamport as number, recentBlockHash);
+        promisesForTransactionsOrErrors.push(txOrErrorPromise);
     }
-    return txOrErrs
 
+    return await Promise.all(promisesForTransactionsOrErrors);
 }
 // TODO: add preTransfer and postTransfer
 export async function multiTransfer(
@@ -172,13 +194,11 @@ export async function multiTransfer(
         )
         const validTransactions = txOrErrors
             .filter(txOrError => !txOrError.isTransactionFormationFailed() && null != txOrError.getTransaction()).map(tx => tx.getTransaction())
-        // validTransactions can only be of type Transaction or 
         return transferTransactions(connection, validTransactions)
     } catch (error) {
         return Promise.resolve(new Array<string>())
     }
 }
-
 
 // TODO: add preTransfer and postTransfer
 export async function transferTransactions(
