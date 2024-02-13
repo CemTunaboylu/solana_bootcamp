@@ -39,3 +39,17 @@ export async function readKeypairFromfile(filePath: string, encoding: string = "
     let retrievedKeypair: string = readFileSync(filePath, encoding);
     return Keypair.fromSecretKey(Uint8Array.from(JSON.parse(retrievedKeypair)));
 }
+
+export function extractFileName(filePath: string): string {
+    let fileName = filePath;
+    const slashIndex = filePath.lastIndexOf("/");
+    if (undefined == slashIndex) {
+        fileName = filePath.substring(slashIndex);
+    }
+
+    const pointIndex = fileName.lastIndexOf(".");
+    if (undefined == pointIndex) {
+        fileName = filePath.substring(pointIndex);
+    }
+    return fileName;
+}
