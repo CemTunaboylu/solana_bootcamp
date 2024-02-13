@@ -1,11 +1,15 @@
-import { Connection, TransactionSignature, LAMPORTS_PER_SOL, BlockhashWithExpiryBlockHeight } from "@solana/web3.js";
+import { Connection, TransactionSignature, LAMPORTS_PER_SOL, BlockhashWithExpiryBlockHeight, VersionedTransaction } from "@solana/web3.js";
 
 import { Wallet, BalanceChecker, IdentifiedBalanceMap } from './interfaces';
-import { airdrop, prepareTransaction, transfer } from "./walletFunctionality"
+import { UnsignedTransaction, airdrop, createVersionedTransactionFrom, prepareTransaction, transfer } from "./walletFunctionality"
 import { ConnectionManager, ConnectionType } from './connection';
 import { logWithTrace } from './logging';
 import { PlainWallet } from "./plainWallet";
 import { TransactionConfirmerBySignature } from "./transactionConfirmerBySignature"
+
+function isPassed(booleanChecks: boolean): string {
+    return ["failed", "successful"][+(booleanChecks)]
+}
 
 class MockBalanceController implements BalanceChecker {
     toReturn: number | null; // in lamports
@@ -25,10 +29,10 @@ class MockBalanceController implements BalanceChecker {
     getBalances(...wallets: Wallet[]): Promise<IdentifiedBalanceMap> {
         return Promise.resolve(this.toReturnMap);
     }
-    doesHaveEnoughBalance(wallet: Wallet, forAmountInLamports: number): boolean {
+    doesHaveEnoughBalance(wallet: Wallet, forAmountInLamports: number): Promise<boolean> {
         const isBalanceNotNull = null != this.toReturn;
         const isBalanceBigger = this.toReturn as number > forAmountInLamports;
-        return isBalanceNotNull && isBalanceBigger;
+        return Promise.resolve(isBalanceNotNull && isBalanceBigger);
     }
 }
 
@@ -81,26 +85,45 @@ async function test_prepareTransaction(conn: Connection, sourceTestWallet: Plain
     for (let testCase of testCases) {
         let mockBalanceChecker = new MockBalanceController(testCase.sourceBalance);
         const sourceWallet = sourceTestWallet as Wallet;
-        let testResultMsg: string = "succesful-test";
-        let passed = true;
-        const txOrError = await prepareTransaction(sourceWallet, targetWallet.getPublicKey(), testCase.lamportsToSend, recentBlockHash, mockBalanceChecker);
+        let testResultMsg: string = "succesful-test", passed = true; // assume all will be good :) 
+        const txOrError = await prepareTransaction(
+            sourceWallet,
+            targetWallet.getPublicKey(),
+            testCase.lamportsToSend,
+            recentBlockHash,
+            mockBalanceChecker);
+
         if (null != txOrError.err || null == txOrError.tx) {
             passed = testCase.expectsError;
             testResultMsg = [
-                `FAILED - UNEXPECTED ERROR OCCURED, test is failed: ${txOrError.err}`,
+                `UNEXPECTED ERROR OCCURED: ${txOrError.err}`,
                 `got the expected error`
             ][+passed]
         } else {
-            const compiledMessage = txOrError.tx.compileMessage();
-            passed = passed && (compiledMessage.recentBlockhash === recentBlockHash.blockhash)
-            passed = passed && (compiledMessage.accountKeys[0].equals(sourceTestWallet.getPublicKey()))
-            passed = passed && (compiledMessage.accountKeys[1].equals(targetWallet.getPublicKey()))
-            passed = passed && false == (testCase.expectsError);
+            let tx = txOrError.getTransaction();
+            let msg;
+            if (null != tx && tx instanceof UnsignedTransaction) {
+                const bareTx = tx.tx;
+                msg = bareTx.compileMessage();
+                tx = createVersionedTransactionFrom(tx.wallet, bareTx)
+                passed = passed && (msg.accountKeys[0].equals(sourceTestWallet.getPublicKey()))
+                passed = passed && (msg.accountKeys[1].equals(targetWallet.getPublicKey()))
+            } else if (tx instanceof VersionedTransaction) {
+                msg = tx.message;
+                const accKeys = msg.getAccountKeys();
+                const source = accKeys.get(0);
+                const to = accKeys.get(1);
+                passed = passed && (undefined != source && source.equals(sourceTestWallet.getPublicKey()))
+                passed = passed && (undefined != to && to.equals(targetWallet.getPublicKey()))
+            }
+            passed = passed && (txOrError.isTransactionFormationFailed() == (testCase.expectsError));
+            if (msg)
+                passed = passed && (msg.recentBlockhash === recentBlockHash.blockhash)
             if (!passed) {
-                testResultMsg = `compiled message: ${JSON.stringify(compiledMessage)}`
+                testResultMsg = `compiled message: ${JSON.stringify(msg)}`
             }
         }
-        logWithTrace(scopeTrace + testCase.testName, `${testResultMsg} : ${["failed", "successful"][+(passed)]}`)
+        logWithTrace(scopeTrace + testCase.testName, `${testResultMsg} : ${isPassed(passed)}`)
     }
 }
 
@@ -113,11 +136,10 @@ async function test_transfer(conn: Connection, sourceTestWallet: PlainWallet, ta
     let mockBalanceChecker = new MockBalanceController(sourceBalanceInLamports);
     const sourceWallet = sourceTestWallet as Wallet;
 
-    const txSignature: TransactionSignature = await transfer(conn, sourceWallet, targetWallet.getPublicKey(), lamportsToSend, mockBalanceChecker);
-    const failed = "" === txSignature;
-    const testResult = `transaction signature is ${txSignature}, test is ${["successful", "failed"][+(failed)]}`
+    const txSignature: TransactionSignature = await transfer(conn, sourceWallet, lamportsToSend, targetWallet.getPublicKey(), mockBalanceChecker);
+    const passed = "" !== txSignature;
+    const testResult = `transaction signature is ${txSignature}, test is ${isPassed(passed)}`
     logWithTrace(scopeTrace, testResult)
-
 }
 
 // TODO: get all the functions with test in their names with reflection and run them one by one
