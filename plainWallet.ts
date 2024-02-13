@@ -2,6 +2,8 @@ import { Keypair, PublicKey, Transaction, Connection } from "@solana/web3.js";
 import { ed25519 } from '@noble/curves/ed25519';
 
 import { Wallet, WalletCustomizerFunction, Ed25519SecretKey } from './interfaces';
+import { writeKeyPairToFile, readKeypairFromfile, extractFileName } from "./fileUtilities";
+import { WithIdentifier, WithKeypair } from "./walletCustomizers";
 
 
 const sign = (
@@ -34,6 +36,18 @@ export class PlainWallet implements Wallet {
     setPrivateKey(privateKey: Uint8Array): boolean {
         this.keypair = Keypair.fromSecretKey(privateKey);
         return true;
+    }
+
+    async loadFrom(filePath: string): Wallet {
+        const keypair = await readKeypairFromfile(filePath);
+        const identifier = extractFileName(filePath);
+        return new PlainWallet(WithIdentifier(identifier), WithKeypair(keypair))
+    }
+
+    async dump(dirPath: string) {
+        const keypair = this.keypair;
+        const identifier = this.getIdentifier()
+        await writeKeyPairToFile(`${dirPath}/${identifier}.json`, keypair)
     }
 
     sign(tx: Transaction): Uint8Array {

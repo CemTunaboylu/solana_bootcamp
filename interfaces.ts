@@ -17,6 +17,9 @@ export interface Wallet {
     setIdentifier(identifier: string): boolean
     setPrivateKey(privateKey: Uint8Array): boolean
 
+    loadFrom(filePath: string): Wallet
+    dump(dirPath: string): void
+
     sign(tx: Transaction): Uint8Array
 }
 
