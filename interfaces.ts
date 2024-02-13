@@ -59,7 +59,7 @@ export enum WalletVaultDelResult {
 
 export interface WalletVault {
     get(identifier: string): Wallet | null
-    set(identifier: string, wallet: Wallet): WalletVaultSetResult
+    set(wallet: Wallet): WalletVaultSetResult
     del(identifier: string, wallet: Wallet): WalletVaultDelResult
 }
 

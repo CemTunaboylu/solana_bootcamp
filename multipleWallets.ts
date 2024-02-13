@@ -6,8 +6,24 @@ import { TransactionOrError, prepareTransaction, transfer, createSignatures, cre
 import { recoverNested } from '@solana/spl-token';
 
 
-async function New(): Promise<Wallet> {
-    throw new Error("not implemented");
+import { ensureDirExists, readKeypairFromfile, listFilesInDirectory, extractFileName } from './fileUtilities';
+import { readFileSync } from 'fs';
+import { TaggedConcurrentWalletVault } from './wallet_vault';
+import { PlainWallet } from './plainWallet';
+import { WithIdentifier, WithKeypair } from './walletCustomizers';
+
+async function New(walletsDirectory: string = "./wallets", withCapacity?: number): Promise<WalletVault> {
+    await ensureDirExists(walletsDirectory);
+    const files = await listFilesInDirectory(walletsDirectory)
+
+    const readPromises = files.map(file => readKeypairFromfile(file))
+    const keyPairs = await Promise.all(readPromises);
+    const taggedConcurrentWalletVault = new TaggedConcurrentWalletVault(withCapacity);
+    keyPairs.forEach((keyPair: Keypair, index: number) => {
+        const wallet = new PlainWallet(WithIdentifier(files[index]), WithKeypair(keyPair));
+        taggedConcurrentWalletVault.set(wallet);
+    })
+    return taggedConcurrentWalletVault;
 }
 
 /* handles many-to-many or many-to-one relationships with source and target wallets, multiple elements are assumed to be of same length 
