@@ -111,11 +111,14 @@ export async function* dynamicMappingGenerator(tobeMappedInOrder: TransactionTri
     }
 }
 
+export const defaultTransactionMappingGenerator = dynamicMappingGenerator
+
 async function divideIntoEnoughAndLackingBalancedWallets(
     identifiedBalanceMap: IdentifiedBalanceMap,
     wallets: Wallet[],
     lamports: number[],
     publicKeys: PublicKey[],
+    transactionMappingGenerator: AsyncTransactionMappingGenerator = defaultTransactionMappingGenerator,
 ): Promise<TransactionTripletArray[]> {
 
     // let toProcessTriplets = [[] as Wallet[], [] as number[], [] as PublicKey[]];
@@ -123,7 +126,7 @@ async function divideIntoEnoughAndLackingBalancedWallets(
     let lackingTriplets: TransactionTripletArray = [[], [], []]
 
 
-    for await (const { wallet, lamport, publickey } of dynamicMappingGenerator([wallets, lamports, publicKeys])) {
+    for await (const { wallet, lamport, publickey } of transactionMappingGenerator([wallets, lamports, publicKeys])) {
         const identifier = (wallet as Wallet).getIdentifier();
 
         const balance = identifiedBalanceMap.get(identifier);
@@ -142,13 +145,12 @@ async function divideIntoEnoughAndLackingBalancedWallets(
     return [toProcessTriplets, toProcessTriplets];
 
 }
-// TODO: have strategies, many to one, one to one: X wallets to X wallet, X wallets to 1 wallet etc.
 export async function prepareTransactions(
-    fromWallets: Array<Wallet>,
-    toPublicKeys: Array<PublicKey>,
-    lamports: Array<number>,
     recentBlockHash: BlockhashWithExpiryBlockHeight,
-    transactionMappingGenerator: AsyncTransactionMappingGenerator,
+    fromWallets: Array<Wallet>,
+    lamports: Array<number>,
+    toPublicKeys: Array<PublicKey>,
+    transactionMappingGenerator: AsyncTransactionMappingGenerator = defaultTransactionMappingGenerator,
     balanceChecker?: BalanceChecker,
 ): Promise<Array<TransactionOrError>> {
     const logTrace = "prepareTransactions"
@@ -162,9 +164,8 @@ export async function prepareTransactions(
     } else {
         toBeProcessedTriplets = [fromWallets, lamports, toPublicKeys]
     }
-    // use this : let toBeProcessedWallets = fromWallets;
     const promisesForTransactionsOrErrors = [];
-    for await (const { wallet, lamport, publickey } of dynamicMappingGenerator(toBeProcessedTriplets)) {
+    for await (const { wallet, lamport, publickey } of transactionMappingGenerator(toBeProcessedTriplets)) {
         const txOrErrorPromise = prepareTransaction(wallet as Wallet, publickey as PublicKey, lamport as number, recentBlockHash);
         promisesForTransactionsOrErrors.push(txOrErrorPromise);
     }
@@ -176,34 +177,36 @@ export async function multiTransfer(
     connection: Connection,
     fromWallets: Wallet[],
     lamports: number[],
-    ...toPublicKeys: PublicKey[]): Promise<TransactionSignature[]> {
+    toPublicKeys: PublicKey[],
+    transactionMappingGenerator: AsyncTransactionMappingGenerator = defaultTransactionMappingGenerator,
+): Promise<TransactionSignature[]> {
     const logTrace = 'Transfer'
     let txSignature: TransactionSignature = "";
     try {
         const recentBlockHash: BlockhashWithExpiryBlockHeight = await connection.getLatestBlockhash()
-        // TODO: inject function to get where to transfer
-        // const function to() {}
-        const txOrErrors: TransactionOrError[] = await Promise.all(
-            fromWallets.map(
-                (from, index) => {
-                    const amountInLamports = lamports[index];
-                    const toPublicKey = toPublicKeys[index];
-                    return prepareTransaction(from, toPublicKey, amountInLamports, recentBlockHash)
-                }
-            )
-        )
+        // TODO: get the mapping here
+        const txOrErrors: TransactionOrError[] =
+            await prepareTransactions(
+                recentBlockHash,
+                fromWallets,
+                lamports,
+                toPublicKeys,
+                transactionMappingGenerator)
+
         const validTransactions = txOrErrors
             .filter(txOrError => !txOrError.isTransactionFormationFailed() && null != txOrError.getTransaction()).map(tx => tx.getTransaction())
-        return transferTransactions(connection, validTransactions)
+        return transferTransactions(connection, validTransactions as VersionedTransactionOrUnsignedTransaction[])
     } catch (error) {
         return Promise.resolve(new Array<string>())
     }
 }
 
+type VersionedTransactionOrUnsignedTransaction = VersionedTransaction | UnsignedTransaction;
+
 // TODO: add preTransfer and postTransfer
 export async function transferTransactions(
     connection: Connection,
-    transactions: Array<VersionedTransaction | UnsignedTransaction>,
+    transactions: Array<VersionedTransactionOrUnsignedTransaction>,
 ): Promise<TransactionSignature[]> {
     const logTrace = 'Transfer'
     const recentBlockHash: BlockhashWithExpiryBlockHeight = await connection.getLatestBlockhash()
