@@ -1,5 +1,5 @@
--node_modules/*
--data/*
--test-ledger/*
-target/
+wallet/-node_modules/*
+wallet/-data/*
+wallet/-test-ledger/*
+library/target/
 zerofile/
